@@ -11,8 +11,8 @@ print_usage() {
     echo "USAGE: $0 launch|list|terminate [ubuntu|aws|aws2]"
 }
 
-SIZE=t2.micro
-LOCAL_KEY=~/.ssh/id_rsa.pub
+SIZE=t4g.micro
+LOCAL_KEY=~/.ssh/id_rsa1
 INSTANCES_LOG=./instances.log
 SG_NAME=ssh-only-sg
 
@@ -21,7 +21,9 @@ case $1 in
         echo "Launching (1) $2 instance size: $SIZE in $AWS_DEFAULT_REGION"
         case $2 in 
             ubuntu )
-                NAME=ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server*
+                # NAME=ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server*
+                # NAME=ubuntu/images/hvm-ssd/ubuntu-focal-20.04-arm64-server*
+                NAME=ubuntu/images/hvm-ssd/ubuntu-focal-20.04-arm64-server-20210429 #ami-076d8ebdd0e1ec091
                 USER=ubuntu
                 ;;
             aws )
@@ -39,7 +41,7 @@ case $1 in
         esac
         echo -n "Looking up latest AMI for $2... "
         AMI=`aws ec2 describe-images \
-            --filters Name=name,Values="$NAME" \
+            --filters Name=name,Values="$NAME " \
             --query 'sort_by(Images, &CreationDate)[-1].ImageId' \
             | sed s/\"//g`
         echo "found: $AMI"
@@ -50,12 +52,12 @@ case $1 in
         if [ `aws ec2 describe-key-pairs | jq .KeyPairs[].KeyName | grep -c $HOSTNAME` -lt 1 ]; then
             if [ ! -f $LOCAL_KEY ]; then
                 echo "Creating local ssh keypair"
-                ssh-keygen -f id_rsa -t rsa -N ''
+                ssh-keygen -f $LOCAL_KEY -t rsa -N ''
             fi
             echo "Importing local public key: $LOCAL_KEY into aws as key-name: $HOSTNAME"
             aws ec2 import-key-pair \
                 --key-name $HOSTNAME \
-                --public-key-material file://$LOCAL_KEY > /dev/null
+                --public-key-material fileb://$LOCAL_KEY.pub > /dev/null
         else
             echo "Using existing AWS key name: $HOSTNAME"
         fi
@@ -86,21 +88,21 @@ case $1 in
            [ -n `aws ec2 describe-security-groups \
                 --filter Name=group-name,Values=ssh-only-sg \
                 | jq --arg ip "$MY_IP" '.SecurityGroups[0].IpPermissions[] | select((.FromPort==22) and (.ToPort=22) and (.IpProtocol=="tcp") and (.IpRanges[0].CidrIp==$ip)) | length'` ]; then
+            echo "Inbound ssh rule from IP $MY_IP to Security Group: $SG_NAME already exists"
+        else
             echo "Adding inbound ssh rule from IP $MY_IP to Security Group: $SG_NAME"
             aws ec2 authorize-security-group-ingress \
                 --group-id $SG_ID \
                 --protocol tcp \
                 --port 22 \
                 --cidr $MY_IP
-        else
-            echo "Inbound ssh rule from IP $MY_IP to Security Group: $SG_NAME already exists"
         fi
 
         # Launch the instance
         echo -n "Launching instance id: "
         INSTANCE=`aws ec2 run-instances \
             --image-id $AMI \
-            --instance-type t2.micro \
+            --instance-type $SIZE \
             --security-groups $SG_NAME \
             --key-name $HOSTNAME`
         # Get the instance ID

@@ -12,7 +12,7 @@ print_usage() {
 }
 
 SIZE=t2.micro
-LOCAL_KEY=~/.ssh/id_rsa.pub
+LOCAL_KEY=~/.ssh/id_rsa1
 #SG_NAME=ssh-only-sg
 
 # Pull the region name from the AWS_DEFAULT_REGION if set (else terrafrom.tf defaults to us-east-1)
@@ -30,14 +30,16 @@ case $1 in
         # Check to make sure the local ssh key exists
         if [ ! -f $LOCAL_KEY ]; then
             # If not, create it
-            ssh-keygen -f id_rsa -t rsa -N ''
+            ssh-keygen -f $LOCAL_KEY -t rsa -N ''
         fi
+        keyfile=$LOCAL_KEY.pub
+
         # Get our public IP address
         MY_IP="`curl -s https://ipinfo.io/ip`/32"
         # Initialize terraform
         terraform init
         # Run the apply
-        terraform apply -var "os=$2" -var "allowed_cidr=$MY_IP" $REGION_PARM $PROFILE_PARM -auto-approve
+        terraform apply -var "keyfile=$keyfile" -var "os=$2" -var "allowed_cidr=$MY_IP" $REGION_PARM $PROFILE_PARM -auto-approve
         ;;
     list )
         # List the output vars

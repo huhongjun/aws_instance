@@ -35,7 +35,7 @@ variable "os" {
 
 variable "size" {
   description = "The ec2 instance size"
-  default     = "t2.micro"
+  default     = "t4g.micro"
 }
 
 variable "keyfile" {
@@ -53,7 +53,8 @@ variable "ami_names" {
   type = map(string)
 
   default = {
-    ubuntu = "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server*"
+#     ubuntu = "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server*"
+    ubuntu = "ubuntu/images/hvm-ssd/ubuntu-focal-20.04-arm64-server-20210429"
     aws    = "amzn-ami-hvm-*-x86_64-gp2"
     aws2   = "amzn2-ami-hvm-2.0.*-x86_64-gp2"
   }
